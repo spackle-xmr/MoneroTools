@@ -9,7 +9,7 @@ def get_gamma():
     gammaval=np.random.gamma(19.28,(1/1.61))
     while gammaval > 13.3: gammaval=np.random.gamma(19.28,(1/1.61)) #Limit maximum time to ~1 week, 70% of distribution.
     gammaval = int(np.exp(gammaval) / 120) #Get value in blocks
-    if gammaval < 10: gammaval = np.random.randint(10, 60) #Apply 7821, jberman
+    if gammaval < 15: gammaval = np.random.randint(15, 65) #Apply 7821, jberman + buffer for confirmation delays
     return gammaval
 
 rpc_user,rpc_password = "XXXX", "YYYY"
