@@ -1,3 +1,4 @@
+# This is a work in progress, use at your own peril.
 # Splits standard address balance across 16 addresses using independently timed 1in/2out transactions matching decoy selection with a max time of 2 days.
 # Uses python-monerorpc https://github.com/monero-ecosystem/python-monerorpc/tree/master
 # Example RPC launch cmd: monero-wallet-rpc --wallet-file XXXX --prompt-for-password --rpc-bind-port 16969 --rpc-login USER:PASS
