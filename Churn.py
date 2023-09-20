@@ -11,7 +11,7 @@ def get_gamma():
     gammaval=np.random.gamma(19.28,(1/1.61))
     while gammaval > 12.46: gammaval=np.random.gamma(19.28,(1/1.61)) #Limit maximum time to ~3 days, 60% of distribution.
     gammaval = int(np.exp(gammaval) / 120) #Get value in blocks
-    if gammaval < 10: gammaval = np.random.randint(10, 60) #Apply 7821, jberman.
+    if gammaval < 10: gammaval = np.random.randint(10, 61) #Apply 7821, jberman.
     return gammaval
 
 class tx_cell:
@@ -24,6 +24,8 @@ rpc_user,rpc_password = 'USER', 'PASS'
 rpc_wallet_connection = AuthServiceProxy('http://{0}:{1}@127.0.0.1:16969/json_rpc'.format(rpc_user, rpc_password)) 
 cells = [] #List of all currently running timers/transactions
 main_address = rpc_wallet_connection.get_address()['addresses'][0]['address'] #Get main address
+creation=rpc_wallet_connection.create_address({"account_index":0,"count":1}) # Create 1 subaddress
+subaddress = rpc_wallet_connection.get_address()['addresses'][1]['address'] #Get subaddress
 height = rpc_wallet_connection.get_height()['height'] #Get height
 print("Churning wallet")
 
@@ -41,7 +43,11 @@ while 1:
         for i in cells: #Check cells
             if (i.timer <= currentHeight): #If it is time, send transaction
                 print("Churning key image :",i.key_image)
-                sweep_data = rpc_wallet_connection.sweep_single({'address':main_address,'key_image':i.key_image,'outputs':1,'do_not_relay':False})
+                address_select = np.random.randint(1,5) # Randomly send to subaddress 25% of the time
+                if address_select == 1: # Send to subaddress
+                    sweep_data = rpc_wallet_connection.sweep_single({'address':subaddress,'key_image':i.key_image,'outputs':1,'do_not_relay':False})
+                else: # Send to main address
+                    sweep_data = rpc_wallet_connection.sweep_single({'address':main_address,'key_image':i.key_image,'outputs':1,'do_not_relay':False})
                 cells.remove(i) #Remove spent key image entry
                 print("Cells :") #Display active cells
                 for item in cells: print(vars(item))
