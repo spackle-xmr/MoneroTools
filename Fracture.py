@@ -27,8 +27,6 @@ cells = [] #List of all currently running timers/transactions
 balances = [0]*(2**outputs_exponent+100) #List of balances in wallet
 receivewait = 20 #Time to wait for splittable balance in wallet
 main_address = rpc_wallet_connection.get_address()['addresses'][0]['address'] #Get main address
-creation=rpc_wallet_connection.create_address({"account_index":0,"count":1}) #Create 1 subaddress
-subaddress = rpc_wallet_connection.get_address()['addresses'][1]['address'] #Get subaddress
 height = rpc_wallet_connection.get_height()['height'] #Get height
 start_balance = rpc_wallet_connection.get_balance()['balance'] #Get wallet balance
 stop_balance = start_balance/2**outputs_exponent #Split balance until all outputs under this value
@@ -50,12 +48,7 @@ while 1:
         for i in cells: #Check cells
             if (i.timer <= currentHeight): #If it is time, send transaction
                 print("Spending key image :",i.key_image)
-
-                address_select = np.random.randint(1,5) # Randomly send to subaddress 25% of the time
-                if address_select == 1: # Send to subaddress
-                    sweep_data = rpc_wallet_connection.sweep_single({'address':subaddress,'key_image':i.key_image,'outputs':2,'do_not_relay':False})
-                else: # Send to main address
-                    sweep_data = rpc_wallet_connection.sweep_single({'address':main_address,'key_image':i.key_image,'outputs':2,'do_not_relay':False})
+                sweep_data = rpc_wallet_connection.sweep_single({'address':main_address,'key_image':i.key_image,'outputs':2,'do_not_relay':False}) #'outputs':1 to churn all separately
                 cells.remove(i) #Remove spent key image entry
                 print("Cells :") #Display active cells
                 for item in cells: print(vars(item))
