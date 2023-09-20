@@ -49,9 +49,9 @@ while 1:
                 if incoming['transfers'][item]['amount'] > small_limit: #If balance is over small limit
                     freezecmd = rpc_wallet_connection.freeze({"key_image":incoming['transfers'][item]['key_image']}) #Freeze large balances
                 if (small_total > 4 * balance_target): #If there is a huge number of small balances, freeze until consolidation is reasonable size
-                    print('Large number of small balances. Freezing key image: {0}'.format(incoming['transfers'][item]['key_image']))
                     frozenstatus = rpc_wallet_connection.frozen({"key_image":incoming['transfers'][item]['key_image']}) #frozen status 
                     if frozenstatus['frozen'] == False: # If balance is not already frozen
+                        print('Large number of small balances. Freezing key image: {0}'.format(incoming['transfers'][item]['key_image']))
                         freezecmd = rpc_wallet_connection.freeze({"key_image":incoming['transfers'][item]['key_image']}) #Freeze balance
                         small_total -= incoming['transfers'][item]['amount'] # Subtract frozen amount from small_total
             #Send transaction
