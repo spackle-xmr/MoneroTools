@@ -17,7 +17,7 @@ def get_gamma():
 #Initialization
 pico = 10**-12
 tera = 10**12
-balance_target = 0.01 * 10**12 #XMR in atomic units
+balance_target = 0.01 * tera #XMR in atomic units
 small_limit = balance_target / 10
 consolidation_timer = tera
 rpc_user,rpc_password = 'USER', 'PASS'
@@ -44,18 +44,16 @@ while 1:
             print('Small balances available: {0} XMR'.format(small_total * pico))
             print('Consolidating at block {0}'.format(consolidation_timer))
         if (consolidation_timer <= currentHeight): #If it is time, send consolidation transaction
-            #Freeze large balances
+            #Freeze balances that are not to be consolidated
             for item in range(len(incoming['transfers'])): #For each available transfer
                 if incoming['transfers'][item]['amount'] > small_limit: #If balance is over small limit
                     freezecmd = rpc_wallet_connection.freeze({"key_image":incoming['transfers'][item]['key_image']}) #Freeze large balances
-                    frozenstatus = rpc_wallet_connection.frozen({"key_image":incoming['transfers'][item]['key_image']}) #frozen status
-            if (small_total > 5 * balance_target): #If there is a huge number of small balances, only consolidate a portion
-                print('Large number of small transactions. Only consolidating a portion of them.')
-                while small_total > 4 * balance_target: #Freeze random output until a reasonable number are left
-                    freeze_item = np.random.randint(0, len(incoming['transfers']))
-                    freezecmd = rpc_wallet_connection.freeze({"key_image":incoming['transfers'][freeze_item]['key_image']}) #Freeze even numbered balances
-                    frozenstatus = rpc_wallet_connection.frozen({"key_image":incoming['transfers'][freeze_item]['key_image']}) #frozen status
-                    incoming = rpc_wallet_connection.incoming_transfers({'transfer_type':'available','account_index':0}) #Refresh information on available outputs
+                if (small_total > 4 * balance_target): #If there is a huge number of small balances, freeze until consolidation is reasonable size
+                    print('Large number of small balances. Freezing key image: {0}'.format(incoming['transfers'][item]['key_image']))
+                    frozenstatus = rpc_wallet_connection.frozen({"key_image":incoming['transfers'][item]['key_image']}) #frozen status 
+                    if frozenstatus['frozen'] == False: # If balance is not already frozen
+                        freezecmd = rpc_wallet_connection.freeze({"key_image":incoming['transfers'][item]['key_image']}) #Freeze balance
+                        small_total -= incoming['transfers'][item]['amount'] # Subtract frozen amount from small_total
             #Send transaction
             consolidate = rpc_wallet_connection.sweep_all({'address':main_address,'do_not_relay':False}) #Consolidate available small balances
             print(consolidate)
