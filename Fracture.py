@@ -25,6 +25,7 @@ rpc_user,rpc_password = 'USER', 'PASS'
 rpc_wallet_connection = AuthServiceProxy('http://{0}:{1}@127.0.0.1:16969/json_rpc'.format(rpc_user, rpc_password)) 
 cells = [] #List of all currently running timers/transactions
 balances = [0]*(2**outputs_exponent+100) #List of balances in wallet
+churn_state = 0 # Status for performing final churn before exiting. 0 = not churning, 1 = creating cells to churn, 2 = churning
 receivewait = 20 #Time to wait for splittable balance in wallet
 main_address = rpc_wallet_connection.get_address()['addresses'][0]['address'] #Get main address
 height = rpc_wallet_connection.get_height()['height'] #Get height
@@ -32,7 +33,7 @@ start_balance = rpc_wallet_connection.get_balance()['balance'] #Get wallet balan
 stop_balance = start_balance/2**outputs_exponent #Split balance until all outputs under this value
 print("Splitting wallet holding {0} XMR into outputs smaller than {1} XMR".format(start_balance/(10**12),stop_balance/(10**12)))
 
-while 1:
+while 1: # Fracture wallet
     time.sleep(5) #Wait 5 seconds
     currentHeight = rpc_wallet_connection.get_height()['height'] #Get height
     incoming = rpc_wallet_connection.incoming_transfers({'transfer_type':'available','account_index':0}) #Get information on available outputs
@@ -40,23 +41,32 @@ while 1:
         for item in range(len(incoming['transfers'])): #For each available transfer
             balances[item] = incoming['transfers'][item]['amount'] #Store available balances
             if not any(entry.key_image == incoming['transfers'][item]['key_image'] for entry in cells): #If key image not already assigned
-                if incoming['transfers'][item]['amount'] > stop_balance: #If balance is above minimum
+                if incoming['transfers'][item]['amount'] > stop_balance or churn_state == 1: #If balance is above minimum or starting final churn
                     cells.append(tx_cell(incoming['transfers'][item]['key_image'], currentHeight + get_gamma())) #Add key image to cells
                     print("Assigned key image to timer:", vars(cells[-1]))
+    if churn_state == 1: churn_state = 2 # All tx now added to cells for final churning, increment flag to 2 so no more cells are created
     if currentHeight != height: #If a new block arrived
         height = currentHeight #Update height
         for i in cells: #Check cells
             if (i.timer <= currentHeight): #If it is time, send transaction
                 print("Spending key image :",i.key_image)
-                sweep_data = rpc_wallet_connection.sweep_single({'address':main_address,'key_image':i.key_image,'outputs':2,'do_not_relay':False}) #'outputs':1 to churn all separately
+                if churn_state == 0:
+                    sweep_data = rpc_wallet_connection.sweep_single({'address':main_address,'key_image':i.key_image,'outputs':2,'do_not_relay':False}) # Send splitting tx
+                else:
+                    sweep_data = rpc_wallet_connection.sweep_single({'address':main_address,'key_image':i.key_image,'outputs':1,'do_not_relay':False}) # Send churn
                 cells.remove(i) #Remove spent key image entry
                 print("Cells :") #Display active cells
                 for item in cells: print(vars(item))
                 print("Balances :") #Display output balances
                 for item in range(len(incoming['transfers'])):
                     print(incoming['transfers'][item]['amount'])
-        if all(x < stop_balance for x in balances): #If all splitting looks done, wait 20 blocks to confirm
+        if all(x < stop_balance for x in balances) and churn_state == 0: #If all splitting looks done and we aren't churning, wait 20 blocks to confirm
             receivewait -= 1
             print('Exit countdown ', receivewait)
         else: receivewait = 20
-        if receivewait < 1: print('All done'); break
+        if receivewait < 1:
+            print("Performing single churn before finishing")
+            churn_state = 1
+            receivewait = 20
+        if churn_state == 2 and not cells: print('All done'); break
+        
